@@ -1,0 +1,763 @@
+# npx eyeling --builtin ../../builtins/sparql.cjs test-builtins.n3 
+
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix time: <http://www.w3.org/2000/10/swap/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix crypto: <http://www.w3.org/2000/10/swap/crypto#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix cube: <https://cube.link/> .
+@prefix ex: <http://example.org/> .
+@prefix sparql: <https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/builtins/sparql.cjs#> .
+
+# any SPARQL endpoint can be used here, as the examples don't rely on any specific data
+ex:let ex:endpoint <http://localhost:7001> .
+
+# change ex:allTests to ex:testSha to only run the SHA1 tests, etc.
+ex:test ex:enabled ex:allTests .
+
+{ ex:test ex:enabled ?test } <= { ex:test ex:enabled ex:allTests } .
+
+
+
+{ 
+    ex:test ex:enabled ex:testSha .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 "a" "b" ex:c) list:member ?x .
+        ?x crypto:sha ?sha . # only strings have a sha
+    } .
+    # SELECT * WHERE {
+    #     VALUES ?x { 1 "a" "b" <http://example.org/c> }
+    #     BIND(SHA1(?x) AS ?sha)
+    # }
+}
+=> 
+{ 
+    ex:result ex:sha1 (?x ?sha) . 
+    # expected  
+    # ("a", "86f7e437faa5a7fce15d1ddcb9eaeaea377667b8")
+    # ("b", "e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98")
+} .
+
+{ 
+    ex:test ex:enabled ex:testSha .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b") list:member ?x .
+        ?x crypto:sha "86f7e437faa5a7fce15d1ddcb9eaeaea377667b8" .
+    } .
+    # SELECT * WHERE {
+    #     VALUES ?x { "a" "b"}
+    #     FILTER(SHA1(?x) = "86f7e437faa5a7fce15d1ddcb9eaeaea377667b8")
+    # }
+}
+=> 
+{ 
+    ex:result ex:sha2 ?x . # expected "a"
+} .
+
+{ 
+    ex:test ex:enabled ex:testSha .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b") list:member ?x .
+        ("e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98") list:member ?sha .
+        ?x crypto:sha ?sha .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { "a" "b" }
+    #   VALUES ?sha { "e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98" }
+    #   FILTER(SHA1(?x) = ?sha)
+    # }
+}
+=> 
+{ 
+    ex:result ex:sha3 (?x ?sha) . 
+    # expected  ("b", "e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98")
+} .
+
+
+
+{ 
+    ex:test ex:enabled ex:testMathGreaterThan .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 2 3 4 5) list:member ?n .
+        ?n math:greaterThan 2 .
+        ?n math:lessThan 5 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 2 3 4 5 }
+    #   FILTER (?n > 2)
+    #   FILTER (?n < 5)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:greaterThan ?n . # (expected 3 and 4)
+} .
+
+{ 
+    ex:test ex:enabled ex:testMathNotGreaterThan .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 2 3 4 5) list:member ?n .
+        ?n math:notGreaterThan 4 .
+        ?n math:notLessThan 3 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 2 3 4 5 }
+    #   FILTER (?n <= 4)
+    #   FILTER (?n >= 3)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:notGreaterThan ?n . # (expected 3 and 4)
+} .
+
+{ 
+    ex:test ex:enabled ex:testEqualTo .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 2 3 4 5) list:member ?n .
+        ?n math:equalTo 4 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 2 3 4 5 }
+    #   FILTER (?n = 4)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:equalTo ?n . # (expected 4)
+} .
+
+{ 
+    ex:test ex:enabled ex:testNotEqualTo .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 2 3 4 5) list:member ?n .
+        ?n math:notEqualTo 1 , 2 , 5 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 2 3 4 5 }
+    #   FILTER (?n != 1)
+    #   FILTER (?n != 2)
+    #   FILTER (?n != 5)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:notEqualTo ?n . # (expected 3 and 4)
+} .
+
+
+{ 
+    ex:test ex:enabled ex:testSum .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1) list:member ?n .
+        (2 3 ?n) math:sum ?sum .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 }
+    #   BIND(2 + 3 + ?n AS ?sum)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:sum ?sum . # expected 6
+} .
+
+{ 
+    ex:test ex:enabled ex:testSum .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 2) list:member ?n .
+        (?n 5) math:sum 7 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 2 }
+    #   FILTER(?n + 5 = 7)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:sum ?n . # expected 2
+} .
+
+
+{ 
+    ex:test ex:enabled ex:testProduct .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1) list:member ?n .
+        (2 3 ?n) math:product ?prod .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 1 }
+    #   BIND(2 * 3 * ?n AS ?prod)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:product ?prod . # expected 6
+} .
+
+{ 
+    ex:test ex:enabled ex:testProduct .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (5 4) list:member ?n .
+        (6 8) list:member ?prod .
+        (?n 2) math:product ?prod .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 5 4 }
+    #   VALUES ?prod { 6 8 }
+    #   FILTER(?n * 2 = ?prod)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:product (?n ?prod) . # expected (4, 8)
+} .
+
+{ 
+    ex:test ex:enabled ex:testDifference .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (2) list:member ?n .
+        (7 ?n) math:difference ?diff .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 2 }
+    #   BIND(7 - ?n AS ?diff)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:difference ?diff . # expected 5
+} .
+
+{ 
+    ex:test ex:enabled ex:testDifference .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (2 4) list:member ?n .
+        (7 ?n) math:difference 3 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 2 4 }
+    #   FILTER(7 - ?n = 3)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:difference ?n . # expected 4
+} .
+
+{ 
+    ex:test ex:enabled ex:testAbsoluteValue .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (2 -3) list:member ?n .
+        ?n math:absoluteValue ?abs .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 2 -3 }
+    #   BIND(ABS(?n) AS ?abs)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:absoluteValue ?abs . # expected 2, 3
+} .
+
+{ 
+    ex:test ex:enabled ex:testAbsoluteValue .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (2 -3) list:member ?n .
+        ?n math:absoluteValue 3 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 2 -3 }
+    #   FILTER(ABS(?n) = 3)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:absoluteValue ?n . # expected -3
+} .
+
+{ 
+    ex:test ex:enabled ex:testRounded .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (2.3 3.8) list:member ?n .
+        ?n math:rounded ?rounded .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 2.3 3.8 }
+    #   BIND(ROUND(?n) AS ?rounded)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:rounded ?rounded . # expected 2.0, 4.0
+} .
+
+{ 
+    ex:test ex:enabled ex:testRounded .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (2.3 3.8) list:member ?n .
+        ?n math:rounded 4 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?n { 2.3 3.8 }
+    #   FILTER(ROUND(?n) = 4)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:rounded ?n . # expected 3.8
+} .
+
+{ 
+    ex:test ex:enabled ex:testDateTime .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("2026-01-20T10:20:30Z"^^xsd:dateTime) list:member ?d .
+        ?d time:day ?day .
+        ?d time:minute ?minute .
+        ?d time:month ?month .
+        ?d time:second ?second .
+        ?d time:timezone ?timezone .
+        ?d time:year ?year .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?d { "2026-01-20T10:20:30Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> }
+    #   BIND(DAY(?d) AS ?day)
+    #   BIND(MINUTES(?d) AS ?minute)
+    #   BIND(MONTH(?d) AS ?month)
+    #   BIND(SECONDS(?d) AS ?second)
+    #   BIND(TZ(?d) AS ?timezone)
+    #   BIND(YEAR(?d) AS ?year)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:year ?year .
+    ex:result ex:month ?month .
+    ex:result ex:day ?day .
+    ex:result ex:minute ?minute .
+    ex:result ex:second ?second .
+    ex:result ex:timezone ?timezone .
+} .
+
+{ 
+    ex:test ex:enabled ex:testDateTime .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("2026-01-20T10:20:30Z"^^xsd:dateTime "2025-01-20T10:20:30Z"^^xsd:dateTime) list:member ?d .
+        ?d time:day 20 .
+        ?d time:minute 20 .
+        ?d time:month 1 .
+        ?d time:second 30 .
+        ?d time:timezone "Z" .
+        ?d time:year 2026 .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?d { "2026-01-20T10:20:30Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> "2025-01-20T10:20:30Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> }
+    #   FILTER(DAY(?d) = 20)
+    #   FILTER(MINUTES(?d) = 20)
+    #   FILTER(MONTH(?d) = 1)
+    #   FILTER(SECONDS(?d) = 30)
+    #   FILTER(TZ(?d) = "Z")
+    #   FILTER(YEAR(?d) = 2026)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:date ?d . # expected "2026-01-20T10:20:30Z"^^xsd:dateTime
+   
+} .
+
+
+{ 
+    ex:test ex:enabled ex:testMember2 .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 "a" ex:b) list:member ?member .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?member { 1 "a" <http://example.org/b> }
+    # }
+} 
+=> 
+{ 
+    ex:result ex:member ?member .
+    # expected 1, "a", <http://example.org/b>
+} .
+
+{ 
+    ex:test ex:enabled ex:testMember .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1 2 3) list:member ?x .
+        (3 4 5) list:member ?x . 
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { 1 2 3 }
+    #   FILTER(?x IN (3, 4, 5))
+    # }
+} 
+=> 
+{ 
+    ex:result ex:member ?x . # expected 3
+} .
+
+
+{ 
+    ex:test ex:enabled ex:testDtlit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("1" 2) list:member ?x .
+        (?x xsd:int) log:dtlit ?dtlit .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { "1" 2 }
+    #   BIND(STRDT(STR(?x), <http://www.w3.org/2001/XMLSchema#int>) AS ?dtlit)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:dtlit1 ?dtlit . # expected "1"^^xsd:int, "2"xsd:int
+} .
+
+{ 
+    ex:test ex:enabled ex:testDtlit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (1.2 "a"@en) list:member ?x .
+        (?lex ?dt) log:dtlit ?x .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { 1.2 "a"@en }
+    #   BIND(STR(?x) AS ?lex)
+    #   BIND(DATATYPE(?x) AS ?dt)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:dtlit2 (?lex ?dt). 
+    # expected ("1.2" xsd:decimal), ("a" rdf:langString)
+    # Note: Qlever returns xsd:double instead of xsd:decimal
+} .
+
+{ 
+    ex:test ex:enabled ex:testDtlit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" 3) list:member ?x .
+        (?lex xsd:string) log:dtlit ?x .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { "a" 3 }
+    #   BIND(STR(?x) AS ?lex)
+    #   FILTER(DATATYPE(?x) = <http://www.w3.org/2001/XMLSchema#string>)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:dtlit3 ?lex . # expected "a"
+} .
+
+{ 
+    ex:test ex:enabled ex:testDtlit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        (xsd:string xsd:double) list:member ?dt .
+        ("a" 3) list:member ?x .
+        ("a" ?dt) log:dtlit ?x .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?dt { <http://www.w3.org/2001/XMLSchema#string> <http://www.w3.org/2001/XMLSchema#double> }
+    #   VALUES ?x { "a" 3 }
+    #   FILTER(STR(?x) = "a")
+    #   FILTER(DATATYPE(?x) = ?dt)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:dtlit4 ?dt . # expected xsd:string
+} .
+
+{ 
+    ex:test ex:enabled ex:testLanglit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a") list:member ?x .
+        (?x 'en') log:langlit ?langlit .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { "a" }
+    #   BIND(STRLANG(STR(?x), "en") AS ?langlit)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:langlit ?langlit . # expected "a"@en
+} .
+
+{ 
+    ex:test ex:enabled ex:testLanglit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a"@en) list:member ?x .
+        (?lex ?lang) log:langlit ?x .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { "a"@en }
+    #   BIND(STR(?x) AS ?lex)
+    #   BIND(LANG(?x) AS ?lang)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:langlit (?lex ?lang). # expected ("a" "en")
+} .
+
+{ 
+    ex:test ex:enabled ex:testLanglit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a"@en) list:member ?x .
+        (?lex 'en') log:langlit ?x .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?x { "a"@en }
+    #   BIND(STR(?x) AS ?lex)
+    #   FILTER(LANG(?x) = "en")
+    # }
+} 
+=> 
+{ 
+    ex:result ex:langlit ?lex . # expected "a"
+} .
+
+{ 
+    ex:test ex:enabled ex:testLanglit .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ('en' 'de') list:member ?lang .
+        ("a"@en) list:member ?x .
+        ("a" ?lang) log:langlit ?x .
+    } .
+    # SELECT * WHERE {
+    #   VALUES ?lang { "en" "de" }
+    #   VALUES ?x { "a"@en }
+    #   FILTER(STR(?x) = "a")
+    #   FILTER(LANG(?x) = ?lang)
+    # }
+} 
+=> 
+{ 
+    ex:result ex:langlit ?lang . # expected "en"
+} .
+
+{ 
+    ex:test ex:enabled ex:testNotIncludes .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b") list:member ?s .
+        [] log:notIncludes {
+             ("b") list:member ?t .
+             ?t log:equalTo ?s .
+            #?s a ex:Test .
+        } .
+    } .
+ } 
+ => 
+ { 
+    ex:result ex:notIncludes ?s .
+
+ } .
+
+{
+    ex:test ex:enabled ex:testConcatenation . 
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a") list:member ?a .
+        (?a "b" "c") string:concatenation ?cat .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:concatenation ?cat . # expected "abc"
+} .
+
+{
+    ex:test ex:enabled ex:temp . 
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b" "c") list:member ?a .
+        (?a "b") string:concatenation "ab" .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:concatenation ?a . # expected "a"
+} .
+
+
+{ 
+    ex:test ex:enabled ex:testContains .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b") list:member ?x .
+        "saw" string:contains ?x .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:contains ?x . # expected "a"
+} .
+
+{ 
+    ex:test ex:enabled ex:testContainsIgnoringCase .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("A" "b") list:member ?x .
+        "saw" string:containsIgnoringCase ?x .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:containsIgnoringCase ?x . # expected "A"
+} .
+
+{ 
+    ex:test ex:enabled ex:testEndsWith .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b") list:member ?x .
+        "sa" string:endsWith ?x .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:endsWith ?x . # expected "a"
+} .
+
+{ 
+    ex:test ex:enabled ex:testEqualIgnoringCase .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("Sa" "b") list:member ?x .
+        "sa" string:equalIgnoringCase ?x .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:equalIgnoringCase ?x . # expected "Sa"
+} .
+
+{ 
+    ex:test ex:enabled ex:testGreaterThan .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b" "c" "d") list:member ?x .
+        ?x string:greaterThan "b" .
+        ?x string:lessThan "d" .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:greaterThan ?x . # expected "c"
+} .
+
+{ 
+    ex:test ex:enabled ex:testMatches .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b" "c" "d") list:member ?x .
+        ?x string:matches "b" .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:matches ?x . # expected "b"
+} .
+
+{ 
+    ex:test ex:enabled ex:testNotEqualIgnoringCase .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b" "B") list:member ?x .
+        ?x string:notEqualIgnoringCase "b" .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:notEqualIgnoringCase ?x . # expected "a"
+} .
+
+{ 
+    ex:test ex:enabled ex:testNotGreaterThan .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b" "c" "d") list:member ?x .
+        ?x string:notGreaterThan "c" .
+        ?x string:notLessThan "c" .
+    } .
+} 
+=> 
+{ 
+    ex:result ex:notGreaterThan ?x . # expected "c"
+} .
+
+{ 
+    ex:test ex:enabled ex:testNotMatches .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("a" "b" "c") list:member ?x .
+        ?x string:notMatches "a" , "c".
+    } .
+} 
+=> 
+{ 
+    ex:result ex:notMatches ?x . # expected "b"
+} .
+
+{ 
+    ex:test ex:enabled ex:testReplace .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("abc") list:member ?x .
+        (?x "a" "c") string:replace ?replaced.
+    } .
+} 
+=> 
+{ 
+    ex:result ex:replace ?replaced . # expected "cbc"
+} .
+
+{ 
+    ex:test ex:enabled ex:testStartsWith .
+    ex:let ex:endpoint ?endpoint .
+    ?endpoint sparql:query {
+        ("abc" "acc") list:member ?x .
+        ?x string:startsWith "ab".
+    } .
+} 
+=> 
+{ 
+    ex:result ex:startsWith ?x . # expected "abc"
+} .
