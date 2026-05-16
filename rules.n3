@@ -1,21 +1,86 @@
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
 @prefix list: <http://www.w3.org/2000/10/swap/list#> .
 @prefix string: <http://www.w3.org/2000/10/swap/string#> .
 @prefix : <https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/rules.n3#> .
 
+# log:namespace and log:localName are not supported by eyeling, so we can define them as string:scrape with the appropriate regexes
+# :locaName is not exactly the same because log:localName returns an empty string if there is a trailing / or #, 
 { ?x :localName ?localName } <= { (?x ".*/([^/?#]+)[/?#]?$") string:scrape ?localName  } .
 { ?x :localName ?localName } <= { (?x "#([^/#]+)$") string:scrape ?localName } .
 
-# pairs each element in ?list with the value of its property ?prop
-{ (?prop ()) :pairs () } <= {  } .
-{ (?prop ?list) :pairs ?pairs } <= { 
+{ ?x :namespace ?ns } <= { (?x "(.*?/)[^/?#]+[/?#]?$") string:scrape ?ns } .
+{ ?x :namespace ?ns } <= { (?x "(.*#)[^/#]+$") string:scrape ?ns } .
+
+# pairs each element in ?list with the value of its ?property
+# (useful to :sortByProperty)
+{ (?property ()) :pairWithProperty () } <= {  } .
+{ (?property ?list) :pairWithProperty ?pairs } <= { 
     ?list list:firstRest (?first ?rest) .
-    (?prop ?rest) :pairs ?restPairs .
-    ?first ?prop ?value .
+    (?property ?rest) :pairWithProperty ?restPairs .
+    ?first ?property ?value .
     ?pairs list:firstRest ((?value ?first) ?restPairs) .
 } .
 
-{ (?prop ?list) :sortByProperty ?sorted} <= {
-  	(?prop ?list) :pairs ?pairs .
+# sort ?list by the value of ?property of its elements
+{ (?property ?list) :sortByProperty ?sorted} <= {
+  	(?property ?list) :pairWithProperty ?pairs .
 	?pairs list:sort ?sortedPairs .
     (?sortedPairs list:last) list:map ?sorted 
 }.
+
+### replacement for string:join in eye
+{ (() ?sep) :join "" } <= { } .
+{ ((?x) ?sep) :join ?x } <= { } .
+{ (?list ?sep) :join ?joined } <= { 
+    ?list list:firstRest (?first ?rest) .
+    ?rest list:first ?second .
+    (?rest ?sep) :join ?restJoined .
+    (?first ?sep ?restJoined) string:concatenation ?joined
+} .
+
+### list:unique
+{ () :unique () } <= { } .
+
+{ ?list :unique ?result } <= { 
+    ?list list:firstRest (?first ?rest) .
+    ?first list:in ?rest .
+    ?rest :unique ?result .
+} .
+
+{ ?list :unique ?result } <= { 
+    ?list list:firstRest (?first ?rest) .
+    ?rest list:notMember ?first .
+    ?rest :unique ?uniqueRest .
+    ?result list:firstRest (?first ?uniqueRest) .
+} .
+
+### set inequality
+{ ?list :setNotEqualTo ?other } <= { 
+    ?list list:member ?x .
+    ?other list:notMember ?x .
+} .
+{ ?list :setNotEqualTo ?other } <= { 
+    ?other list:member ?x .
+    ?list list:notMember ?x .
+} .
+
+### list difference
+{ (?list1 ?list2) :except ?except } <= { 
+    (?x {
+        ?list1 list:member ?x .
+        ?list2 list:notMember ?x .
+    } ?except) log:collectAllIn [] .
+} .
+
+### termType
+{ ?term :termType :Literal } <= { ?term log:rawType log:Literal } .
+
+{ ?term :termType :IRI } <= { 
+    ?term log:rawType log:Other . 
+    ?term log:uri ?x . 
+    ?x log:rawType log:Literal . # necessary to exclude blank nodes (why?)
+} .
+{ ?term :termType :Blank } <= { 
+    ?term log:rawType log:Other. 
+    ((?term) log:uri) list:map () .
+} .
