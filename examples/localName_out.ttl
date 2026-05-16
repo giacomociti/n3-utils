@@ -1,0 +1,6 @@
+@prefix ex: <http://example.org/> .
+
+ex:test1 ex:localName "test1" .
+<http://example.org#test2> ex:localName "test2" .
+<http://example.org/test3/> ex:localName "test3" .
+<http://example.org/test4#> ex:localName "test4" .

@@ -1,0 +1,17 @@
+# npx eyeling ../rules.n3 localName.n3 > localName_out.ttl
+
+@prefix : <https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/rules.n3#> .
+@prefix ex: <http://example.org/> .
+
+<> :test 
+    <http://example.org/test1> , 
+    <http://example.org#test2> , 
+    <http://example.org/test3/> ,
+    <http://example.org/test4#> .
+
+{ 
+    <> :test ?test .
+    ?test :localName ?localName 
+} => { 
+    ?test ex:localName ?localName 
+} . 

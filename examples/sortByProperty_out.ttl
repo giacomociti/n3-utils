@@ -1,0 +1,4 @@
+@prefix ex: <http://example.org/> .
+
+(ex:p (ex:test1 ex:test2 ex:test3)) ex:sortByProperty (ex:test1 ex:test3 ex:test2) .
+(ex:p ()) ex:sortByProperty () .

@@ -1,0 +1,21 @@
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix : <https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/rules.n3#> .
+
+{ ?x :localName ?localName } <= { (?x ".*/([^/?#]+)[/?#]?$") string:scrape ?localName  } .
+{ ?x :localName ?localName } <= { (?x "#([^/#]+)$") string:scrape ?localName } .
+
+# pairs each element in ?list with the value of its property ?prop
+{ (?prop ()) :pairs () } <= {  } .
+{ (?prop ?list) :pairs ?pairs } <= { 
+    ?list list:firstRest (?first ?rest) .
+    (?prop ?rest) :pairs ?restPairs .
+    ?first ?prop ?value .
+    ?pairs list:firstRest ((?value ?first) ?restPairs) .
+} .
+
+{ (?prop ?list) :sortByProperty ?sorted} <= {
+  	(?prop ?list) :pairs ?pairs .
+	?pairs list:sort ?sortedPairs .
+    (?sortedPairs list:last) list:map ?sorted 
+}.
