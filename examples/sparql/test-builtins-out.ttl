@@ -1,0 +1,80 @@
+@prefix : <file:///home/giacomo/repo/giacomociti/n3-utils/examples/sparql/test-builtins.n3#> .
+@prefix crypto: <http://www.w3.org/2000/10/swap/crypto#> .
+@prefix ex: <http://example.org/> .
+@prefix list: <http://www.w3.org/2000/10/swap/list#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix math: <http://www.w3.org/2000/10/swap/math#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+crypto:sha :result1 ("a" "86f7e437faa5a7fce15d1ddcb9eaeaea377667b8") .
+crypto:sha :result1 ("b" "e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98") .
+crypto:sha :result2 "a" .
+crypto:sha :result3 ("b" "e9d71f5ee7c92d6dc9e92ffdad17b8bd49418f98") .
+math:greaterThan :result "4"^^xsd:int .
+math:greaterThan :result "5"^^xsd:int .
+math:lessThan :result "1"^^xsd:int .
+math:lessThan :result "2"^^xsd:int .
+math:notGreaterThan :result "1"^^xsd:int .
+math:notGreaterThan :result "2"^^xsd:int .
+math:notGreaterThan :result "3"^^xsd:int .
+math:notLessThan :result "3"^^xsd:int .
+math:notLessThan :result "4"^^xsd:int .
+math:notLessThan :result "5"^^xsd:int .
+math:equalTo ex:result "4"^^xsd:int .
+math:notEqualTo ex:result "3"^^xsd:int .
+math:notEqualTo ex:result "4"^^xsd:int .
+math:sum :result1 "6"^^xsd:int .
+math:sum :result2 "2"^^xsd:int .
+math:product :result "6"^^xsd:int .
+math:product :result ("4"^^xsd:int "8"^^xsd:int) .
+math:difference :result1 "5"^^xsd:int .
+math:difference :result2 "4"^^xsd:int .
+math:absoluteValue :result1 "2"^^xsd:int .
+math:absoluteValue :result1 "3"^^xsd:int .
+math:absoluteValue :result2 "-3"^^xsd:int .
+math:rounded :result "2.0"^^xsd:decimal .
+math:rounded :result "4.0"^^xsd:decimal .
+math:rounded :result2 "3.8"^^xsd:decimal .
+list:member :result1 "1"^^xsd:int .
+list:member :result1 "a" .
+list:member :result1 ex:b .
+list:member :result2 "3"^^xsd:int .
+list:in :result1 "1"^^xsd:int .
+list:in :result1 "a" .
+list:in :result1 ex:b .
+list:in :result2 "3"^^xsd:int .
+log:dtlit ex:result1 "1"^^xsd:int .
+log:dtlit ex:result1 "2"^^xsd:int .
+log:dtlit ex:result2 ("1.2" xsd:double) .
+log:dtlit ex:result2 ("a" rdf:langString) .
+log:dtlit ex:result3 "a" .
+log:dtlit ex:result4 xsd:string .
+log:langlit ex:result1 "a"@en .
+log:langlit ex:result2 ("a" "en") .
+log:langlit ex:result3 "a" .
+log:langlit ex:result4 "en" .
+log:includes :result "a" .
+log:includes :result "b" .
+log:notIncludes :result "a" .
+log:notIncludes :result "b" .
+string:concatenation ex:result1 "abc" .
+string:concatenation ex:result2 "a" .
+string:contains :result "a" .
+string:containsIgnoringCase :result "A" .
+string:endsWith :result "a" .
+string:equalIgnoringCase :result "Sa" .
+string:greaterThan :result "c" .
+string:greaterThan :result "d" .
+string:lessThan :result "a" .
+string:matches :result "b" .
+string:notEqualIgnoringCase :result "a" .
+string:notGreaterThan :result "a" .
+string:notGreaterThan :result "b" .
+string:notGreaterThan :result "c" .
+string:notLessThan :result "c" .
+string:notLessThan :result "d" .
+string:notMatches :result "b" .
+string:replace :result "cbc" .
+string:startsWith :result "abc" .

@@ -1,4 +1,4 @@
-const SPARQL_NS = 'https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/builtins/sparql.cjs#';
+const SPARQL_NS = 'https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/builtins/sparql.js#';
 
 
 // execution of a SPARQL query (synchronously, no async allowed, see also eyeling `deref`)
@@ -46,12 +46,16 @@ module.exports = (obj) => {
   const { Var, Iri, Blank, ListTerm, Literal, GraphTerm } = terms;
 
   // format eyeling terms as SPARQL query terms
-  // (isn't this already available in eyeling somewhere?)
-  const formatTerm = (term) => {
-    if (term instanceof Var) return `?${term.name}`; // blanks are also passed as variables
-    if (term instanceof Iri) return `<${term.value}>`;
-    if (term instanceof Literal) return term.value;
-    if (term instanceof ListTerm) return '(' + term.elems.map(formatTerm).join(' ') + ')';
+  const formatVar = (term) => `?${term.name}`;
+  const formatLiteral = (term) => term.value ;
+  const formatIri = (term) => `<${term.value}>`;
+  const formatListTerm = (term) => '(' + term.elems.map(formatTerm).join(' ') + ')';
+
+  function formatTerm (term) {
+    if (term instanceof Var) return formatVar(term); // blanks are also passed as variables
+    if (term instanceof Iri) return formatIri(term);
+    if (term instanceof Literal) return formatLiteral(term);
+    if (term instanceof ListTerm) return formatListTerm(term);
   }
 
   // convert SPARQL query results to eyeling terms
@@ -177,6 +181,14 @@ module.exports = (obj) => {
     return `FILTER(${formatTerm(o)} IN (${s.elems.map(formatTerm).join(', ')}))`;
   };
 
+  const listIn = (s, o, vars) => {
+    if (!(o instanceof ListTerm)) return;
+    if (s instanceof Var && !vars.has(s.name)) {
+      return `VALUES ${formatTerm(s)} { ${o.elems.map(formatTerm).join(' ')} }`;
+    }
+    return `FILTER(${formatTerm(s)} IN (${o.elems.map(formatTerm).join(', ')}))`;
+  };
+
   const logDtlit = (s, o, vars) => {
     if(!(s instanceof ListTerm) || s.elems.length !== 2) return;
     if ((o instanceof Var) && !vars.has(o.name)) {
@@ -260,21 +272,45 @@ module.exports = (obj) => {
   }
   const stringStartsWith = (s, o) => `FILTER(STRSTARTS(${formatTerm(s)}, ${formatTerm(o)}))`;
 
+  // SPARQL-specific built-ins for query patterns
+
+  const sparqlBind = (s, o, vars) => {
+    if (!(s instanceof ListTerm)) return;
+    if (o instanceof Var && !vars.has(o.name)) {
+      return `BIND(${formatSparqlExpression(s)} AS ${formatVar(o)})`;
+    }
+  }
+
+  const sparqlFilter = (s, o) => {
+    if (!(o instanceof ListTerm)) return;
+    return `FILTER(${formatSparqlExpression(o)})`;
+  }
+
+  const sparqlMinus = (s, o, vars) => {
+    if (!(o instanceof GraphTerm)) return;
+    return `MINUS 
+    { 
+      ${toSparql(o.triples, new Set(vars))}
+    }`;
+  }
+    
   const sparqlOptional = (s, o, vars) => {
     if (!(o instanceof GraphTerm)) return;
-    return `OPTIONAL { 
+    return `OPTIONAL 
+    { 
       ${toSparql(o.triples, new Set(vars))}
     }`;
   }
 
-  const sparqlCoalesce = (s, o, vars) => {
-    if (!(s instanceof ListTerm)) return;
-    if (o instanceof Var && !vars.has(o.name)) {
-      return `BIND(COALESCE(${s.elems.map(formatTerm).join(', ')}) AS ${formatTerm(o)})`;
+  const sparqlQuery = (s, o, vars) => {
+    if (!(o instanceof GraphTerm)) return;
+    return `
+    {
+    ${toSelectQuery(o, new Set(vars))}
     }
-    return `FILTER(COALESCE(${s.elems.map(formatTerm).join(', ')}) = ${formatTerm(o)})`;
+    `;
   }
-    
+
   const sparqlUnion = (s, o, vars) => {
     if (!(s instanceof GraphTerm)) return;
     if (!(o instanceof GraphTerm)) return;
@@ -284,6 +320,8 @@ module.exports = (obj) => {
       ${toSparql(o.triples, new Set(vars))}
     }`;
   }
+
+
 
   const builtinReplacements = new Map([
     // crypto
@@ -309,6 +347,7 @@ module.exports = (obj) => {
     [ns.TIME_NS + 'timezone', timeTimezone],
     // list
     [ns.LIST_NS + 'member', listMember],
+    [ns.LIST_NS + 'in', listIn],
     // log
     [ns.LOG_NS + 'dtlit',logDtlit],
     [ns.LOG_NS + 'langlit', logLanglit],
@@ -335,37 +374,117 @@ module.exports = (obj) => {
     [ns.STRING_NS + 'startsWith', stringStartsWith],
 
     // sparql
-    [SPARQL_NS + 'union', sparqlUnion],
-    // todo MINUS?
+    [SPARQL_NS + 'bind', sparqlBind],
+    [SPARQL_NS + 'filter', sparqlFilter],
+    [SPARQL_NS + 'minus', sparqlMinus],
     // todo Group Graph Pattern?
     [SPARQL_NS + 'optional', sparqlOptional],
-    [SPARQL_NS + 'coalesce', sparqlCoalesce],
+    [SPARQL_NS + 'query', sparqlQuery],
+    [SPARQL_NS + 'union', sparqlUnion],
   ]);
+
+  const operators = {}
+  operators[SPARQL_NS + 'count'] = 'COUNT';
+  operators[SPARQL_NS + 'sum'] = 'SUM';
+  operators[SPARQL_NS + 'avg'] = 'AVG';
+  operators[SPARQL_NS + 'min'] = 'MIN';
+  operators[SPARQL_NS + 'max'] = 'MAX';
+  operators[SPARQL_NS + 'sample'] = 'SAMPLE';
+  operators[SPARQL_NS + 'concat'] = 'CONCAT';
+  operators[SPARQL_NS + 'asc'] = 'ASC';
+  operators[SPARQL_NS + 'desc'] = 'DESC';
+  operators[SPARQL_NS + 'coalesce'] = 'COALESCE';
+  operators[SPARQL_NS + 'str'] = 'STR';
+  operators[SPARQL_NS + 'lang'] = 'LANG';
+  operators[SPARQL_NS + 'datatype'] = 'DATATYPE';
+  operators[SPARQL_NS + 'bound'] = 'BOUND';
+  // ... add more operators as needed
+ 
+
+  const comparers = {}
+  comparers[SPARQL_NS + 'greaterThan'] = '>';
+  comparers[SPARQL_NS + 'lessThan'] = '<';
+  comparers[SPARQL_NS + 'notGreaterThan'] = '<=';
+  comparers[SPARQL_NS + 'notLessThan'] = '>=';
+  comparers[SPARQL_NS + 'equalTo'] = '=';
+  comparers[SPARQL_NS + 'notEqualTo'] = '!=';
+
+  function formatSparqlExpression(term) {
+    if (term instanceof ListTerm) {
+      const [ operator, ...operands] = term.elems;
+      if (!(operator instanceof Iri)) return null;
+      const op = operators[operator.value];
+      if(op) {
+        const args = operands.map(formatSparqlExpression).join(', ');
+        return `${op}(${args})`;
+      }
+      const cmp = comparers[operator.value];
+      if (cmp && operands.length === 2) {
+        return `(${formatSparqlExpression(operands[0])} ${cmp} ${formatSparqlExpression(operands[1])})`;
+      }
+      if (operator.value === SPARQL_NS + 'bind') {
+        return `(${formatSparqlExpression(operands[1])} AS ${formatVar(operands[0])})`;
+      }
+    } else {
+      return formatTerm(term);
+    }
+  }
+
+  const parseModifiers = term => {
+    const modifiers = {};
+    for (const triple of term.triples) {
+      if (triple.p.value === SPARQL_NS + 'select' && triple.o instanceof ListTerm) {
+        modifiers.select = triple.o.elems ;     
+      }
+      else if (triple.p.value === SPARQL_NS + 'from' && triple.o instanceof ListTerm) {
+        modifiers.from = triple.o.elems ;     
+      }
+      else if (triple.p.value === SPARQL_NS + 'groupBy' && triple.o instanceof ListTerm) {
+        modifiers.groupBy = triple.o.elems;
+      }
+      else if (triple.p.value === SPARQL_NS + 'having') {
+        modifiers.having = triple.o;
+      }
+      else if (triple.p.value === SPARQL_NS + 'orderBy' && triple.o instanceof ListTerm) {
+        modifiers.orderBy = triple.o.elems;
+      }
+      else if (triple.p.value === SPARQL_NS + 'limit' && triple.o instanceof Literal) {
+        modifiers.limit = Number.parseInt(triple.o.value) ;
+      }
+      else if (triple.p.value === SPARQL_NS + 'offset' && triple.o instanceof Literal) {
+        modifiers.offset = Number.parseInt(triple.o.value) ;
+      }
+    }
+    return modifiers;
+  }
 
   const caches = new Map();
 
   // register the builtin
-  registerBuiltin(SPARQL_NS + 'query', ({ goal }) => {
+  registerBuiltin(SPARQL_NS + 'query', (obj) => {
+    const { goal } = obj;
     if (!(goal.s instanceof Iri)) return [];
     if (!(goal.o instanceof GraphTerm)) return [];
-
-    // collect variables to distinguish between bound and unbound variables in the SPARQL translation
-    const vars = new Set();
-    const query = 'SELECT * WHERE {\n' + toSparql(goal.o.triples, vars) + '\n}'
 
     const endpoint = goal.s.value;
     if (!caches.has(endpoint)) {
       caches.set(endpoint, new Map());
     }
     const cache = caches.get(endpoint);
+
+    // collect variables to distinguish between bound and unbound variables in the SPARQL translation
+    const vars = new Set();
+    const query = toSelectQuery(goal.o, vars);
+
     if (cache.has(query)) {
-      // console.warn('Using cached result for query on ', endpoint, ':', query);
+      console.warn('Using cached result for query on ', endpoint, ':', query);
       return cache.get(query);
     }
 
     console.warn('Running query on ', endpoint, ':', query);
     const response = runQuery(endpoint, query);
     const substitutions = JSON.parse(response).results.bindings.map(getSubstitutions);
+    // maybe (at least in forward rules) we can set the cache value to []
     cache.set(query, substitutions);
     return substitutions;
   });
@@ -397,6 +516,70 @@ module.exports = (obj) => {
     return substitutions;
   });
 
+  function formatSparqlPath(term) {
+    if (term instanceof Iri) {
+      return formatIri(term);
+    }
+    if (term instanceof Var) {
+      return formatVar(term);
+    }
+    // assume it's a list term representing a path expression
+    if(!(term instanceof ListTerm && term.elems.length > 0 && term.elems[0] instanceof Iri)) {
+      throw new Error('Invalid path expression: ' + term);
+    }
+    
+    const [first, ...rest] = term.elems;
+    // assume first is Iri representing the operator, and rest are the operands
+    if (first.value === SPARQL_NS + 'seq') {
+      return rest.map(formatSparqlPath).join(' / ');
+    }
+    if (first.value === SPARQL_NS + 'alt') {
+      return rest.map(formatSparqlPath).join(' | ');
+    }
+    if (first.value === SPARQL_NS + 'inv' && rest.length === 1) {
+      return '^' + formatSparqlPath(rest[0]);
+    }
+    if (first.value === SPARQL_NS + 'zeroOrMore' && rest.length === 1) {
+      return "(" + formatSparqlPath(rest[0]) + ")*";
+    }
+    if (first.value === SPARQL_NS + 'oneOrMore' && rest.length === 1) {
+      return "(" + formatSparqlPath(rest[0]) + ")+";
+    }
+    if (first.value === SPARQL_NS + 'zeroOrOne' && rest.length === 1) {
+      return "(" + formatSparqlPath(rest[0]) + ")?"; 
+    }
+
+    throw new Error('Invalid path expression: ' + term);
+  
+  }
+
+  function toSelectQuery(graphTerm, vars) {
+    const { select, from, groupBy, having, orderBy, limit, offset } = parseModifiers(graphTerm);
+    const projection = select ? select.map(formatSparqlExpression).join(' ') : '*';
+    let query = '\nSELECT ' + projection;
+    if (from) {
+      query += '\nFROM ' + from.map(formatIri).join(' ');
+    }
+    query += '\nWHERE {\n' + toSparql(graphTerm.triples, vars) + '\n}';
+    if (groupBy) {
+      query += '\nGROUP BY ' + groupBy.map(formatSparqlExpression).join(' ');
+    }
+    if (having) {
+      query += '\nHAVING ' + formatSparqlExpression(having);
+    }
+    if (orderBy) {
+      query += '\nORDER BY ' + orderBy.map(formatSparqlExpression).join(' ');
+    }
+    if (limit) {
+      query += '\nLIMIT ' + limit;
+    }
+    if (offset) {
+      query += '\nOFFSET ' + offset;
+    }
+
+    return query;
+  }
+
   function toSparql(triples, vars) {
     const lines = [];
     for (const triple of triples) {
@@ -404,8 +587,8 @@ module.exports = (obj) => {
       if (replacement) {
         lines.push(`  ${replacement(triple.s, triple.o, vars)}`);
       }
-      else {
-        lines.push(`  ${formatTerm(triple.s)} ${formatTerm(triple.p)} ${formatTerm(triple.o)} .`);
+      else if (!(triple.p instanceof Iri && triple.p.value.startsWith(SPARQL_NS))) {
+        lines.push(`  ${formatTerm(triple.s)} ${formatSparqlPath(triple.p)} ${formatTerm(triple.o)} .`);
       }
 
       if (triple.s instanceof Var) vars.add(triple.s.name);
