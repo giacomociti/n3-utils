@@ -6,17 +6,18 @@ const SPARQL_NS = 'https://raw.githubusercontent.com/giacomociti/n3-utils/refs/h
 const isNode = () => typeof process !== 'undefined' && !!(process.versions && process.versions.node);
 const hasXmlHttpRequest = () => typeof XMLHttpRequest !== 'undefined';
 
-// not tested yet, but should work in the browser if CORS allows it
+// should work in the browser if CORS allows it
 const runQueryBrowser = (endpoint, query) => {
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', endpoint, false); // synchronous
     try {
+      xhr.setRequestHeader('Content-Type', 'application/sparql-query; charset=UTF-8');
       xhr.setRequestHeader('Accept', 'application/sparql-results+json');
     } catch {
       // Some environments restrict setting headers (ignore).
     }
-    xhr.send(`query=${encodeURIComponent(query)}`);
+    xhr.send(query);
     const sc = xhr.status || 0;
     if (sc < 200 || sc >= 300) return null;
     return xhr.responseText;
@@ -41,7 +42,7 @@ const runQuery =
   () => { throw new Error("No way to run queries"); };
 
 // eyeling builtin for running SPARQL queries against an endpoint
-module.exports = (obj) => {
+const sparqlBuiltin = (obj) => {
   const { registerBuiltin, internLiteral, terms, ns } = obj;
   const { Var, Iri, Blank, ListTerm, Literal, GraphTerm } = terms;
 
@@ -598,3 +599,11 @@ module.exports = (obj) => {
     return lines.join('\n');
   }
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = sparqlBuiltin;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.sparqlBuiltin = sparqlBuiltin;
+}

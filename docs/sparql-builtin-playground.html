@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPARQL Builtin Playground</title>
+</head>
+<body>
+  <h1>SPARQL Builtin Playground</h1>
+  <textarea id="rules" rows="20" cols="60">
+@prefix wd: <http://www.wikidata.org/entity/> .
+@prefix wdt: <http://www.wikidata.org/prop/direct/> .
+@prefix sparql: <https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/builtins/sparql.js#> .
+
+{
+    <https://qlever.dev/api/wikidata> sparql:query {
+        wd:Q12418 wdt:P170 ?author .
+        ?author wdt:P1477 ?name .
+    } .
+}
+=>
+{
+    wd:Q12418 wdt:P170 ?author .
+    ?author wdt:P1477 ?name .
+} .
+  </textarea>
+  <button id="run">Run</button>
+  <pre id="output"></pre>
+
+  <script src="https://cdn.jsdelivr.net/gh/eyereasoner/eyeling@main/dist/browser/eyeling.browser.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/giacomociti/n3-utils@main/builtins/sparql.js"></script>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const rules = document.getElementById('rules').value;
+      const output = document.getElementById('output');
+      output.textContent = 'Running...';
+
+      try {
+        if (!globalThis.eyeling) {
+          throw new Error('eyeling browser bundle not loaded');
+        }
+        if (!globalThis.sparqlBuiltin) {
+          throw new Error('sparql builtin module not loaded');
+        }
+
+        const result = globalThis.eyeling.reasonStream(rules, {
+          builtinModules: [globalThis.sparqlBuiltin],
+        });
+
+        output.textContent = result.closureN3;
+      } catch (err) {
+        output.textContent = (err && err.stack) ? err.stack : String(err);
+      }
+    });
+  </script>
+</body>
+</html>
