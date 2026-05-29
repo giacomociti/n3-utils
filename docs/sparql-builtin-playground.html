@@ -27,27 +27,41 @@
   <button id="run">Run</button>
   <pre id="output"></pre>
 
-  <script src="https://cdn.jsdelivr.net/gh/eyereasoner/eyeling@v1.24.33/dist/browser/eyeling.browser.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/giacomociti/n3-utils@v0.1.0/builtins/sparql.js"></script>
   <script>
-    document.getElementById('run').addEventListener('click', async () => {
+    let worker;
+    let lastRequestId = 0;
+
+    const getWorker = () => {
+      if (!worker) {
+        worker = new Worker('./sparql-playground-worker.js');
+      }
+      return worker;
+    };
+
+    document.getElementById('run').addEventListener('click', () => {
       const rules = document.getElementById('rules').value;
       const output = document.getElementById('output');
       output.textContent = 'Running...';
+      lastRequestId += 1;
+      const requestId = lastRequestId;
 
       try {
-        if (!globalThis.eyeling) {
-          throw new Error('eyeling browser bundle not loaded');
-        }
-        if (!globalThis.sparqlBuiltin) {
-          throw new Error('sparql builtin module not loaded');
-        }
+        const reasoningWorker = getWorker();
 
-        const result = globalThis.eyeling.reasonStream(rules, {
-          builtinModules: [globalThis.sparqlBuiltin],
-        });
+        reasoningWorker.onmessage = (event) => {
+          const data = event.data || {};
+          if (data.requestId !== requestId) {
+            return;
+          }
 
-        output.textContent = result.closureN3;
+          output.textContent = data.ok ? data.closureN3 : (data.error || 'Unknown worker error');
+        };
+
+        reasoningWorker.onerror = (event) => {
+          output.textContent = event.message || 'Worker failed to execute';
+        };
+
+        reasoningWorker.postMessage({ requestId, rules });
       } catch (err) {
         output.textContent = (err && err.stack) ? err.stack : String(err);
       }

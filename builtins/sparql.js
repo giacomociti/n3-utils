@@ -276,7 +276,7 @@ const sparqlBuiltin = (obj) => {
   // SPARQL-specific built-ins for query patterns
 
   const sparqlBind = (s, o, vars) => {
-    if (!(s instanceof ListTerm)) return;
+    // if (!(s instanceof ListTerm)) return;
     if (o instanceof Var && !vars.has(o.name)) {
       return `BIND(${formatSparqlExpression(s)} AS ${formatVar(o)})`;
     }
