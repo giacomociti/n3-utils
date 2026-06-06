@@ -50,12 +50,14 @@ const sparqlBuiltin = (obj) => {
   const formatVar = (term) => `?${term.name}`;
   const formatLiteral = (term) => term.value ;
   const formatIri = (term) => `<${term.value}>`;
+  const formatBlank = (term) => term.label || `[]`;
   const formatListTerm = (term) => '(' + term.elems.map(formatTerm).join(' ') + ')';
 
   function formatTerm (term) {
-    if (term instanceof Var) return formatVar(term); // blanks are also passed as variables
+    if (term instanceof Var) return formatVar(term); 
     if (term instanceof Iri) return formatIri(term);
     if (term instanceof Literal) return formatLiteral(term);
+    if (term instanceof Blank) return formatBlank(term);
     if (term instanceof ListTerm) return formatListTerm(term);
   }
 
@@ -399,16 +401,26 @@ const sparqlBuiltin = (obj) => {
   operators[SPARQL_NS + 'lang'] = 'LANG';
   operators[SPARQL_NS + 'datatype'] = 'DATATYPE';
   operators[SPARQL_NS + 'bound'] = 'BOUND';
+  operators[SPARQL_NS + 'isIRI'] = 'isIRI';
+  operators[SPARQL_NS + 'isBlank'] = 'isBLANK';
+  operators[SPARQL_NS + 'isLiteral'] = 'isLITERAL';
+  operators[SPARQL_NS + 'not'] = '!';
   // ... add more operators as needed
  
 
-  const comparers = {}
-  comparers[SPARQL_NS + 'greaterThan'] = '>';
-  comparers[SPARQL_NS + 'lessThan'] = '<';
-  comparers[SPARQL_NS + 'notGreaterThan'] = '<=';
-  comparers[SPARQL_NS + 'notLessThan'] = '>=';
-  comparers[SPARQL_NS + 'equalTo'] = '=';
-  comparers[SPARQL_NS + 'notEqualTo'] = '!=';
+  const infixOperators = {}
+  infixOperators[SPARQL_NS + 'and'] = '&&';
+  infixOperators[SPARQL_NS + 'or'] = '||';
+  infixOperators[SPARQL_NS + 'greaterThan'] = '>';
+  infixOperators[SPARQL_NS + 'lessThan'] = '<';
+  infixOperators[SPARQL_NS + 'notGreaterThan'] = '<=';
+  infixOperators[SPARQL_NS + 'notLessThan'] = '>=';
+  infixOperators[SPARQL_NS + 'equalTo'] = '=';
+  infixOperators[SPARQL_NS + 'notEqualTo'] = '!=';
+  infixOperators[SPARQL_NS + 'multiply'] = '*';
+  infixOperators[SPARQL_NS + 'divide'] = '/';
+  infixOperators[SPARQL_NS + 'add'] = '+';
+  infixOperators[SPARQL_NS + 'subtract'] = '-';
 
   function formatSparqlExpression(term) {
     if (term instanceof ListTerm) {
@@ -419,9 +431,9 @@ const sparqlBuiltin = (obj) => {
         const args = operands.map(formatSparqlExpression).join(', ');
         return `${op}(${args})`;
       }
-      const cmp = comparers[operator.value];
-      if (cmp && operands.length === 2) {
-        return `(${formatSparqlExpression(operands[0])} ${cmp} ${formatSparqlExpression(operands[1])})`;
+      const infixOp = infixOperators[operator.value];
+      if (infixOp && operands.length === 2) {
+        return `(${formatSparqlExpression(operands[0])} ${infixOp} ${formatSparqlExpression(operands[1])})`;
       }
       if (operator.value === SPARQL_NS + 'bind') {
         return `(${formatSparqlExpression(operands[1])} AS ${formatVar(operands[0])})`;
@@ -517,6 +529,16 @@ const sparqlBuiltin = (obj) => {
     return substitutions;
   });
 
+  registerBuiltin(SPARQL_NS + 'format', ({ goal }) => {
+    if (!(goal.s instanceof GraphTerm)) return [];
+    if (!(goal.o instanceof Var)) return [];
+
+    const vars = new Set();
+    const query = toSelectQuery(goal.s, vars);
+
+    return [{[goal.o.name]: internLiteral(query)}];
+  });
+
   function formatSparqlPath(term) {
     if (term instanceof Iri) {
       return formatIri(term);
@@ -559,7 +581,7 @@ const sparqlBuiltin = (obj) => {
     const projection = select ? select.map(formatSparqlExpression).join(' ') : '*';
     let query = '\nSELECT ' + projection;
     if (from) {
-      query += '\nFROM ' + from.map(formatIri).join(' ');
+      query += from.map(x => '\nFROM ' + formatIri(x)).join('');
     }
     query += '\nWHERE {\n' + toSparql(graphTerm.triples, vars) + '\n}';
     if (groupBy) {

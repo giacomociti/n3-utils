@@ -1,0 +1,167 @@
+# npx eyeling --builtin ../../builtins/sparql.js test-format.n3 
+
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix log: <http://www.w3.org/2000/10/swap/log#> .
+@prefix ex: <http://example.org/> .
+@prefix : <#> .
+@prefix sparql: <https://raw.githubusercontent.com/giacomociti/n3-utils/refs/heads/main/builtins/sparql.js#> .
+
+{ 
+    ?query :name ?name .
+    ('#' ?name ?query '\n\n') string:concatenation ?result .
+} 
+=> 
+{ 
+    [] log:outputString ?result .
+} .
+
+
+{ 
+    {} sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "empty" .
+} .
+
+{ 
+    {
+        ?s a ex:Person ;
+            ex:name ?name .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "bgp" .
+} .
+
+{ 
+    {
+        ?s ex:name ?name .
+        (sparql:concat "Hello " ?name) sparql:bind ?greeting
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "bind" .
+} .
+
+{ 
+    {
+        ?s ex:name ?name .
+        [] sparql:filter (sparql:notEqualTo ?name "") .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "filter" .
+} .
+
+{ 
+    {
+        ?s a ex:Person .
+        [] sparql:minus { ?s ex:name "" } .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "minus" .
+} .
+
+{ 
+    {
+        ?s a ex:Person .
+        [] sparql:optional { ?s ex:name ?name } .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "optional" .
+} .
+
+{ 
+    {
+        ?s ex:name ?name .
+        [] sparql:query { 
+            ?s a ex:Person .
+            [ 
+                sparql:select (?s) ;
+                sparql:limit 10 ; 
+                sparql:offset 20 ; 
+                sparql:orderBy ((sparql:asc ?s)) 
+            ]
+        }
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "subquery" .
+} .
+
+{ 
+    {
+        ?s a ex:Person .
+        { ?s ex:name ?name } sparql:union { ?s ex:nickname ?name } .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "union" .
+} .
+
+{ 
+    {
+        (
+            sparql:add 
+                (sparql:multiply 2 (sparql:subtract 5 3)) 
+                (sparql:divide 10 2)
+        ) sparql:bind ?x .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "arithmetic" .
+} .
+
+{ 
+    {
+        10 sparql:bind ?x .
+        [] sparql:filter (
+            sparql:or
+                (sparql:and 
+                    (sparql:greaterThan ?x 5) 
+                    (sparql:lessThan ?x 15)
+                ) 
+                (sparql:not (sparql:equalTo ?x 10))
+            
+        ) .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "comparison" .
+} .
+
+
+{ 
+    {
+        [
+            sparql:select (?place (sparql:bind ?count (sparql:count ?person))) ;
+            sparql:from (ex:People ex:PeopleDetails) ;
+            sparql:groupBy (?place) ;
+            sparql:having (sparql:greaterThan (sparql:count ?person) 10) ;
+            sparql:orderBy ((sparql:desc ?place)) ;
+            sparql:limit 5 ;
+            sparql:offset 10
+        ] .
+
+        ?person (sparql:seq rdf:type (sparql:zeroOrMore rdfs:subClassOf)) ex:Person .
+        ?person ex:birthPlace ?place .
+    } sparql:format ?query .
+} 
+=> 
+{ 
+    ?query :name "complex grouping" .
+} .

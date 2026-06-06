@@ -230,3 +230,12 @@ GROUP BY ?place
 HAVING (COUNT(?person) > 10)
 ORDER BY DESC(?place)
 ```
+
+## the format builtin
+Another builtin, `sparql:format`, generates SPARQL text
+from a graph term without executing the query.
+
+This is useful for experimentation and debugging, and for other
+cases where you want to generate SPARQL without running it.
+
+See [test-format.n3](../examples/sparql/test-format.n3) for usage examples.

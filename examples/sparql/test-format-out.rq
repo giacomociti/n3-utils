@@ -1,0 +1,103 @@
+#empty
+SELECT *
+WHERE {
+
+}
+
+#bgp
+SELECT *
+WHERE {
+  ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .
+  ?s <http://example.org/name> ?name .
+}
+
+#complex grouping
+SELECT ?place (COUNT(?person) AS ?count)
+FROM <http://example.org/People>
+FROM <http://example.org/PeopleDetails>
+WHERE {
+  ?person <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> / (<http://www.w3.org/2000/01/rdf-schema#subClassOf>)* <http://example.org/Person> .
+  ?person <http://example.org/birthPlace> ?place .
+}
+GROUP BY ?place
+HAVING (COUNT(?person) > 10)
+ORDER BY DESC(?place)
+LIMIT 5
+OFFSET 10
+
+#bind
+SELECT *
+WHERE {
+  ?s <http://example.org/name> ?name .
+  BIND(CONCAT("Hello ", ?name) AS ?greeting)
+}
+
+#filter
+SELECT *
+WHERE {
+  ?s <http://example.org/name> ?name .
+  FILTER((?name != ""))
+}
+
+#minus
+SELECT *
+WHERE {
+  ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .
+  MINUS 
+    { 
+        ?s <http://example.org/name> "" .
+    }
+}
+
+#optional
+SELECT *
+WHERE {
+  ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .
+  OPTIONAL 
+    { 
+        ?s <http://example.org/name> ?name .
+    }
+}
+
+#subquery
+SELECT *
+WHERE {
+  ?s <http://example.org/name> ?name .
+  
+    {
+    
+SELECT ?s
+WHERE {
+  ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .
+}
+ORDER BY ASC(?s)
+LIMIT 10
+OFFSET 20
+    }
+    
+}
+
+#union
+SELECT *
+WHERE {
+  ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person> .
+  {
+        ?s <http://example.org/name> ?name .
+    } UNION {
+        ?s <http://example.org/nickname> ?name .
+    }
+}
+
+#arithmetic
+SELECT *
+WHERE {
+  BIND(((2 * (5 - 3)) + (10 / 2)) AS ?x)
+}
+
+#comparison
+SELECT *
+WHERE {
+  BIND(10 AS ?x)
+  FILTER((((?x > 5) && (?x < 15)) || !((?x = 10))))
+}
+
