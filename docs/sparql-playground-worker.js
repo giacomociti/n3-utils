@@ -1,4 +1,4 @@
-importScripts('https://cdn.jsdelivr.net/gh/eyereasoner/eyeling@v1.27.6/dist/browser/eyeling.browser.js');
+importScripts('https://cdn.jsdelivr.net/gh/eyereasoner/eyeling@v1.29.3/dist/browser/eyeling.browser.js');
 importScripts('https://cdn.jsdelivr.net/gh/giacomociti/n3-utils@v0.1.1/builtins/sparql.js');
 
 self.onmessage = (event) => {

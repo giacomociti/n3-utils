@@ -476,18 +476,24 @@ const sparqlBuiltin = (obj) => {
   // register the builtin
   registerBuiltin(SPARQL_NS + 'query', (obj) => {
     const { goal } = obj;
-    if (!(goal.s instanceof Iri)) return [];
     if (!(goal.o instanceof GraphTerm)) return [];
+
+    // collect variables to distinguish between bound and unbound variables in the SPARQL translation
+    const vars = new Set();
+    const query = toSelectQuery(goal.o, vars);
+
+    // if the subject is a variable, we bind it to the query string instead of running the query
+    if (goal.s instanceof Var)
+      return [{[goal.s.name]: internLiteral(query)}];
+
+    if (!(goal.s instanceof Iri)) return [];
+    // otherwise we treat it as an endpoint and run the query against it
 
     const endpoint = goal.s.value;
     if (!caches.has(endpoint)) {
       caches.set(endpoint, new Map());
     }
     const cache = caches.get(endpoint);
-
-    // collect variables to distinguish between bound and unbound variables in the SPARQL translation
-    const vars = new Set();
-    const query = toSelectQuery(goal.o, vars);
 
     if (cache.has(query)) {
       console.warn('Using cached result for query on ', endpoint, ':', query);
