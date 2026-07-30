@@ -2,10 +2,10 @@
 
 [Notation-3](https://notation3.org/) is a powerful rules language, and [builtins](https://notation3.org/#n3-builtin) greatly contribute 
 to its expressiveness. The [eyeling](https://eyereasoner.github.io/eyeling/) implementation allows adding
-[custom builtins](https://eyereasoner.github.io/eyeling/HANDBOOK#chapter-16--extending-eyeling-without-breaking-it), and this repository provides one for integrating SPARQL queries
+[custom builtins](https://eyereasoner.github.io/eyeling/#custom-built-ins), and this repository provides one for integrating SPARQL queries
 into rules.
 
-The `sparql:query` builtin expects a SPARQL endpoint IRI in the subject position and a graph term containing the query to execute in the object position.
+The `sparql:query` builtin expects a SPARQL endpoint IRI in the subject position and a graph term representing the query to execute in the object position.
 
 In the following example, we use a QLever endpoint to query Wikidata for the author of a famous painting:
 
@@ -27,7 +27,7 @@ In the following example, we use a QLever endpoint to query Wikidata for the aut
 } .
 ```
 
-Basic graph patterns are the same in SPARQL and N3, so the builtin executes the following SPARQL query:
+Basic graph patterns (BGPs) are the same in SPARQL and N3, so the builtin executes the following SPARQL query:
 
 ```sparql
 SELECT * WHERE {
@@ -43,6 +43,8 @@ The eyeling CLI allows you to run rules with custom builtins:
 ```sh
 npx eyeling --builtin sparql.js rules.n3
 ```
+
+Eyeling works also in the browser, and [here](https://giacomociti.github.io/n3-utils/sparql-builtin-playground.html) you can find a playground that uses the SPARQL builtin.
 
 ### N3-builtins within SPARQL queries
 
@@ -142,6 +144,7 @@ For `sparql:union`, both the subject and object must be graph terms:
 { 
     <https://qlever.dev/api/wikidata> sparql:query {
         wd:Q12418 wdt:P170 ?author .
+
         {
             wd:Q12418 wdt:P1476 ?label .
             ([] 'en') log:langlit ?label .
@@ -231,8 +234,8 @@ HAVING (COUNT(?person) > 10)
 ORDER BY DESC(?place)
 ```
 
-## the format builtin
-Another builtin, `sparql:format`, generates SPARQL text
+## Query text
+Replacing the endpoint IRI with a variable, you can generate SPARQL text
 from a graph term without executing the query.
 
 This is useful for experimentation and debugging, and for other

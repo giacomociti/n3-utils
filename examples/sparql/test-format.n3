@@ -19,7 +19,7 @@
 
 
 { 
-    {} sparql:format ?query .
+    ?query sparql:query {}
 } 
 => 
 { 
@@ -27,10 +27,10 @@
 } .
 
 { 
-    {
+   ?query sparql:query  {
         ?s a ex:Person ;
             ex:name ?name .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -38,10 +38,10 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         ?s ex:name ?name .
         (sparql:concat "Hello " ?name) sparql:bind ?greeting
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -49,10 +49,10 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         ?s ex:name ?name .
         [] sparql:filter (sparql:notEqualTo ?name "") .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -60,10 +60,10 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         ?s a ex:Person .
         [] sparql:minus { ?s ex:name "" } .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -71,10 +71,10 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         ?s a ex:Person .
         [] sparql:optional { ?s ex:name ?name } .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -82,7 +82,7 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         ?s ex:name ?name .
         [] sparql:query { 
             ?s a ex:Person .
@@ -93,7 +93,7 @@
                 sparql:orderBy ((sparql:asc ?s)) 
             ]
         }
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -101,10 +101,10 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         ?s a ex:Person .
         { ?s ex:name ?name } sparql:union { ?s ex:nickname ?name } .
-    } sparql:format ?query .
+    } .
 } 
 => 
 { 
@@ -112,13 +112,13 @@
 } .
 
 { 
-    {
+    ?query sparql:query {
         (
             sparql:add 
                 (sparql:multiply 2 (sparql:subtract 5 3)) 
                 (sparql:divide 10 2)
         ) sparql:bind ?x .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -126,7 +126,7 @@
 } .
 
 { 
-    {
+   ?query sparql:query  {
         10 sparql:bind ?x .
         [] sparql:filter (
             sparql:or
@@ -137,7 +137,7 @@
                 (sparql:not (sparql:equalTo ?x 10))
             
         ) .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 
@@ -146,7 +146,7 @@
 
 
 { 
-    {
+    ?query sparql:query {
         [
             sparql:select (?place (sparql:bind ?count (sparql:count ?person))) ;
             sparql:from (ex:People ex:PeopleDetails) ;
@@ -159,7 +159,7 @@
 
         ?person (sparql:seq rdf:type (sparql:zeroOrMore rdfs:subClassOf)) ex:Person .
         ?person ex:birthPlace ?place .
-    } sparql:format ?query .
+    }
 } 
 => 
 { 

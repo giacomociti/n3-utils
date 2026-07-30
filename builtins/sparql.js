@@ -535,16 +535,6 @@ const sparqlBuiltin = (obj) => {
     return substitutions;
   });
 
-  registerBuiltin(SPARQL_NS + 'format', ({ goal }) => {
-    if (!(goal.s instanceof GraphTerm)) return [];
-    if (!(goal.o instanceof Var)) return [];
-
-    const vars = new Set();
-    const query = toSelectQuery(goal.s, vars);
-
-    return [{[goal.o.name]: internLiteral(query)}];
-  });
-
   function formatSparqlPath(term) {
     if (term instanceof Iri) {
       return formatIri(term);
