@@ -1,0 +1,88 @@
+# generic rules to create simple shapes (without targets) from r2rml mappings
+
+@prefix string: <http://www.w3.org/2000/10/swap/string#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix : <#> .
+
+{ ?triplesMap a rr:TriplesMap } => { ?triplesMap :shape [] } .
+
+{ [] :shape ?shape ; rr:subjectMap [ rr:class ?class ] } => { ?shape sh:class ?class } .
+
+{ [] :shape ?shape ; rr:predicateObjectMap [ rr:predicate ?path ] } => { ?shape sh:predicate [ sh:path ?path] } .
+
+{  
+    ?triplesMap :shape [ sh:predicate ?predicate ] .
+    ?predicate sh:path ?path .
+    ?triplesMap
+        rr:predicateObjectMap [
+            rr:predicate ?path;
+            rr:objectMap [ :nodeKind ?nodeKind ]
+        ].
+} => { 
+    ?predicate sh:nodeKind ?nodeKind
+} .
+
+{ ?objectMap :nodeKind sh:Literal } <= { ?objectMap rr:column [] } .
+{ ?objectMap :nodeKind sh:IRI } <= { ?objectMap rr:template [] } .
+
+# rr:constant => sh:hasValue
+{  
+    ?triplesMap :shape [ sh:predicate ?predicate ] .
+    ?predicate sh:path ?path .
+    ?triplesMap
+        rr:predicateObjectMap [
+            rr:predicate ?path;
+            rr:objectMap [ rr:constant ?constant ]
+        ].
+} => { 
+    ?predicate sh:hasValue ?constant
+} .
+
+# rr:datatype => sh:datatype
+{  
+    ?triplesMap :shape [ sh:predicate ?predicate ] .
+    ?predicate sh:path ?path .
+    ?triplesMap
+        rr:predicateObjectMap [
+            rr:predicate ?path;
+            rr:objectMap [ rr:datatype ?datatype ]
+        ].
+} => { 
+    ?predicate sh:datatype ?datatype
+} .
+
+# rr:language => rdf:langString
+{  
+    ?triplesMap :shape [ sh:predicate ?predicate ] .
+    ?predicate sh:path ?path .
+    ?triplesMap
+        rr:predicateObjectMap [
+            rr:predicate ?path;
+            rr:objectMap [ rr:language [] ]
+        ].
+} => { 
+    ?predicate sh:datatype rdf:langString
+} .
+
+# rr:template => sh:pattern
+{  
+    ?triplesMap :shape [ sh:predicate ?predicate ] .
+    ?predicate sh:path ?path .
+    ?triplesMap
+        rr:predicateObjectMap [
+            rr:predicate ?path;
+            rr:objectMap [ rr:template ?template ]
+        ].
+    (?template "{[^{}]*}" ".*") string:replace ?pattern .
+} => { 
+    ?predicate sh:pattern ?pattern
+} .
+
+{ 
+    [] :shape ?shape ; rr:subjectMap [ rr:template ?template ] .
+    (?template "{[^{}]*}" ".*") string:replace ?pattern .
+
+} => { ?shape sh:pattern ?pattern } .
