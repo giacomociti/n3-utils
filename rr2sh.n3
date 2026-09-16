@@ -11,18 +11,18 @@
 
 { [] :shape ?shape ; rr:subjectMap [ rr:class ?class ] } => { ?shape sh:class ?class } .
 
-{ [] :shape ?shape ; rr:predicateObjectMap [ rr:predicate ?path ] } => { ?shape sh:predicate [ sh:path ?path] } .
+{ [] :shape ?shape ; rr:predicateObjectMap [ rr:predicate ?path ] } => { ?shape sh:property [ sh:path ?path] } .
 
 {  
-    ?triplesMap :shape [ sh:predicate ?predicate ] .
-    ?predicate sh:path ?path .
+    ?triplesMap :shape [ sh:property ?property ] .
+    ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
             rr:predicate ?path;
             rr:objectMap [ :nodeKind ?nodeKind ]
         ].
 } => { 
-    ?predicate sh:nodeKind ?nodeKind
+    ?property sh:nodeKind ?nodeKind
 } .
 
 { ?objectMap :nodeKind sh:Literal } <= { ?objectMap rr:column [] } .
@@ -30,47 +30,47 @@
 
 # rr:constant => sh:hasValue
 {  
-    ?triplesMap :shape [ sh:predicate ?predicate ] .
-    ?predicate sh:path ?path .
+    ?triplesMap :shape [ sh:property ?property ] .
+    ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
             rr:predicate ?path;
             rr:objectMap [ rr:constant ?constant ]
         ].
 } => { 
-    ?predicate sh:hasValue ?constant
+    ?property sh:hasValue ?constant
 } .
 
 # rr:datatype => sh:datatype
 {  
-    ?triplesMap :shape [ sh:predicate ?predicate ] .
-    ?predicate sh:path ?path .
+    ?triplesMap :shape [ sh:property ?property ] .
+    ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
             rr:predicate ?path;
             rr:objectMap [ rr:datatype ?datatype ]
         ].
 } => { 
-    ?predicate sh:datatype ?datatype
+    ?property sh:datatype ?datatype
 } .
 
 # rr:language => rdf:langString
 {  
-    ?triplesMap :shape [ sh:predicate ?predicate ] .
-    ?predicate sh:path ?path .
+    ?triplesMap :shape [ sh:property ?property ] .
+    ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
             rr:predicate ?path;
             rr:objectMap [ rr:language [] ]
         ].
 } => { 
-    ?predicate sh:datatype rdf:langString
+    ?property sh:datatype rdf:langString
 } .
 
 # rr:template => sh:pattern
 {  
-    ?triplesMap :shape [ sh:predicate ?predicate ] .
-    ?predicate sh:path ?path .
+    ?triplesMap :shape [ sh:property ?property ] .
+    ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
             rr:predicate ?path;
@@ -78,7 +78,7 @@
         ].
     (?template "{[^{}]*}" ".*") string:replace ?pattern .
 } => { 
-    ?predicate sh:pattern ?pattern
+    ?property sh:pattern ?pattern
 } .
 
 { 
