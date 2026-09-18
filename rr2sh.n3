@@ -1,5 +1,6 @@
 # generic rules to create simple shapes (without targets) from r2rml mappings
 
+@prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix string: <http://www.w3.org/2000/10/swap/string#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -7,14 +8,21 @@
 @prefix rr: <http://www.w3.org/ns/r2rml#> .
 @prefix : <#> .
 
-{ ?triplesMap a rr:TriplesMap } => { ?triplesMap :shape [] } .
+{ ?triplesMap rr:subjectMap [] } => { 
+    [] prov:wasDerivedFrom ?triplesMap 
+} .
 
-{ [] :shape ?shape ; rr:subjectMap [ rr:class ?class ] } => { ?shape sh:class ?class } .
+{ ?shape prov:wasDerivedFrom [ rr:subjectMap [ rr:class ?class ] ] } => {
+     ?shape sh:class ?class 
+} .
 
-{ [] :shape ?shape ; rr:predicateObjectMap [ rr:predicate ?path ] } => { ?shape sh:property [ sh:path ?path] } .
+{ ?shape prov:wasDerivedFrom [ rr:predicateObjectMap [ rr:predicate ?path ] ]} => { 
+    ?shape sh:property [ sh:path ?path] 
+} .
 
 {  
-    ?triplesMap :shape [ sh:property ?property ] .
+    ?shape prov:wasDerivedFrom ?triplesMap ;
+        sh:property ?property .
     ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
@@ -30,7 +38,8 @@
 
 # rr:constant => sh:hasValue
 {  
-    ?triplesMap :shape [ sh:property ?property ] .
+    ?shape prov:wasDerivedFrom ?triplesMap ;
+        sh:property ?property .    
     ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
@@ -43,7 +52,8 @@
 
 # rr:datatype => sh:datatype
 {  
-    ?triplesMap :shape [ sh:property ?property ] .
+    ?shape prov:wasDerivedFrom ?triplesMap ;
+        sh:property ?property .     
     ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
@@ -56,7 +66,8 @@
 
 # rr:language => rdf:langString
 {  
-    ?triplesMap :shape [ sh:property ?property ] .
+    ?shape prov:wasDerivedFrom ?triplesMap ;
+        sh:property ?property .     
     ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
@@ -69,7 +80,8 @@
 
 # rr:template => sh:pattern
 {  
-    ?triplesMap :shape [ sh:property ?property ] .
+    ?shape prov:wasDerivedFrom ?triplesMap ;
+        sh:property ?property .     
     ?property sh:path ?path .
     ?triplesMap
         rr:predicateObjectMap [
@@ -82,7 +94,7 @@
 } .
 
 { 
-    [] :shape ?shape ; rr:subjectMap [ rr:template ?template ] .
+    ?shape prov:wasDerivedFrom [ rr:subjectMap [ rr:template ?template ] ] .
     (?template "{[^{}]*}" ".*") string:replace ?pattern .
 
 } => { ?shape sh:pattern ?pattern } .
