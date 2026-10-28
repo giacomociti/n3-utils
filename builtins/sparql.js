@@ -249,6 +249,11 @@ const sparqlBuiltin = (obj) => {
   const logEqualTo = (s, o) => `FILTER(${formatTerm(s)} = ${formatTerm(o)})`;
   const logNotEqualTo = (s, o) => `FILTER(${formatTerm(s)} != ${formatTerm(o)})`;
 
+  const logUri = (s, o) => {
+    if(s instanceof Iri && o instanceof Var) return `BIND(STR(${formatIri(s)}) AS ${formatVar(o)})`
+    if(s instanceof Var) return `BIND(IRI(${formatTerm(o)}) AS ${formatVar(s)})`
+  }
+
   const stringConcatenation = (s, o, vars) => {
     if (!(s instanceof ListTerm)) return;
     if (o instanceof Var && !vars.has(o.name)) {
@@ -324,6 +329,14 @@ const sparqlBuiltin = (obj) => {
     }`;
   }
 
+  const sparqlService = (s, o, vars) => {
+    if (!(s instanceof Iri)) return;
+    if (!(o instanceof GraphTerm)) return;
+    return `SERVICE ${formatIri(s)} {
+      ${toSparql(o.triples, new Set(vars))}
+    }`;
+  }
+
 
 
   const builtinReplacements = new Map([
@@ -358,6 +371,7 @@ const sparqlBuiltin = (obj) => {
     [ns.LOG_NS + 'notIncludes', logNotIncludes],
     [ns.LOG_NS + 'equalTo', logEqualTo],
     [ns.LOG_NS + 'notEqualTo', logNotEqualTo],
+    [ns.LOG_NS + 'uri', logUri],
     // string
     [ns.STRING_NS + 'concatenation', stringConcatenation],
     [ns.STRING_NS + 'contains', stringContains],
@@ -384,6 +398,7 @@ const sparqlBuiltin = (obj) => {
     [SPARQL_NS + 'optional', sparqlOptional],
     [SPARQL_NS + 'query', sparqlQuery],
     [SPARQL_NS + 'union', sparqlUnion],
+    [SPARQL_NS + 'service', sparqlService],
   ]);
 
   const operators = {}
