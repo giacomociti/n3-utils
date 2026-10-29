@@ -337,6 +337,13 @@ const sparqlBuiltin = (obj) => {
     }`;
   }
 
+  const sparqlServiceSilent = (s, o, vars) => {
+    if (!(s instanceof Iri)) return;
+    if (!(o instanceof GraphTerm)) return;
+    return `SERVICE SILENT ${formatIri(s)} {
+      ${toSparql(o.triples, new Set(vars))}
+    }`;
+  }
 
 
   const builtinReplacements = new Map([
@@ -399,6 +406,7 @@ const sparqlBuiltin = (obj) => {
     [SPARQL_NS + 'query', sparqlQuery],
     [SPARQL_NS + 'union', sparqlUnion],
     [SPARQL_NS + 'service', sparqlService],
+    [SPARQL_NS + 'serviceSilent', sparqlServiceSilent],
   ]);
 
   const operators = {}
@@ -490,7 +498,7 @@ const sparqlBuiltin = (obj) => {
 
   // register the builtin
   registerBuiltin(SPARQL_NS + 'query', (obj) => {
-    const { goal } = obj;
+    const { goal , api } = obj;
     if (!(goal.o instanceof GraphTerm)) return [];
 
     // collect variables to distinguish between bound and unbound variables in the SPARQL translation
@@ -512,14 +520,24 @@ const sparqlBuiltin = (obj) => {
 
     if (cache.has(query)) {
       console.warn('Using cached result for query on ', endpoint, ':', query);
-      return cache.get(query);
+    } else {
+      console.warn('Running query on ', endpoint, ':', query);
+      const response = runQuery(endpoint, query);
+      const substitutions = JSON.parse(response).results.bindings.map(getSubstitutions);
+      // maybe (at least in forward rules) we can set the cache value to []
+      cache.set(query, substitutions);
     }
+    const substitutions = cache.get(query);
 
-    console.warn('Running query on ', endpoint, ':', query);
-    const response = runQuery(endpoint, query);
-    const substitutions = JSON.parse(response).results.bindings.map(getSubstitutions);
-    // maybe (at least in forward rules) we can set the cache value to []
-    cache.set(query, substitutions);
+    const constructTriple = goal.o.triples.find(triple => triple.p.value === SPARQL_NS + 'construct');
+    if (constructTriple && constructTriple.s instanceof Var && constructTriple.o instanceof GraphTerm) {
+      const variable = constructTriple.s.name;
+      const graph = constructTriple.o;
+      const graphs = substitutions.map(subst => api.applySubstTerm(graph, subst));
+      const triples = graphs.flatMap(g => g.triples);
+      return [{[variable]: new GraphTerm(triples)}];
+    }
+    
     return substitutions;
   });
 
